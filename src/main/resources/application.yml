@@ -1,0 +1,132 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ai-super-agent
+
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:ai_super_agent}
+    username: ${PG_USER:postgres}
+    password: ${PG_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  ai:
+    # 指定默认 Chat / Embedding 模型（避免多 Starter 冲突）
+    model:
+      chat: dashscope
+      embedding: dashscope
+
+    # ── 百炼 / 通义 DashScope ──
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY:}
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.7
+      embedding:
+        options:
+          model: text-embedding-v2
+          dimensions: 1536
+
+    # ── DeepSeek ──
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.7
+
+    # ── Ollama 本地部署 ──
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: qwen2.5:7b
+      embedding:
+        options:
+          model: nomic-embed-text
+
+    # 向量存储 PGvector
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+        initialize-schema: true
+
+    # 会话记忆
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
+    # MCP 客户端
+    mcp:
+      client:
+        enabled: ${MCP_ENABLED:false}
+
+# ── 大模型接入配置 ──
+super-agent:
+  default-model: dashscope
+  system-prompt: |
+    你是 AI 超级智能体，具备知识检索、工具调用和多轮对话能力。
+    回答问题时优先使用检索到的上下文信息，若上下文中没有答案，请如实告知用户。
+    调用工具时仔细分析用户需求，选择最合适的工具完成任务。
+  rag:
+    top-k: 5
+    similarity-threshold: 0.7
+  models:
+    providers:
+      dashscope:
+        enabled: true
+        display-name: 通义千问（百炼）
+        model: qwen-plus
+        temperature: 0.7
+      deepseek:
+        enabled: ${DEEPSEEK_ENABLED:false}
+        display-name: DeepSeek
+        model: deepseek-chat
+        temperature: 0.7
+      doubao:
+        enabled: ${DOUBAO_ENABLED:false}
+        display-name: 豆包（火山引擎）
+        model: ${DOUBAO_MODEL:doubao-pro-32k}
+        api-key: ${DOUBAO_API_KEY:}
+        base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com}
+        completions-path: ${DOUBAO_COMPLETIONS_PATH:/api/v3/chat/completions}
+        temperature: 0.7
+      ollama:
+        enabled: ${OLLAMA_ENABLED:false}
+        display-name: Ollama 本地模型
+        model: qwen2.5:7b
+        base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+        temperature: 0.7
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+logging:
+  level:
+    com.ragpro.superagent: DEBUG
+    com.ragpro.lovemaster: DEBUG
+    org.springframework.ai: INFO
+
+# ── AI 恋爱大师 ──
+love-master:
+  max-memory-messages: 30
+  temperature: 0.8
+  system-prompt: |
+    你是一位专业、温暖、幽默的 AI 恋爱大师，名叫「小爱」。
+    你擅长情感分析、沟通技巧、恋爱心理学。
+    回答时先共情，再分析，最后给具体可执行的建议（不超过3条）。
+    尊重用户选择，不做道德评判。遇到心理危机信号，引导寻求专业帮助。

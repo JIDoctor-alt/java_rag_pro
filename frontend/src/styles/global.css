@@ -1,0 +1,60 @@
+:root {
+  --pink: #ff6b9d;
+  --pink-soft: #ffe3ee;
+  --pink-deep: #e14b7a;
+  --purple: #a06bff;
+  --bg: #fff5f8;
+  --text: #33303a;
+  --text-soft: #8a8594;
+  --card: #ffffff;
+  --shadow: 0 8px 30px rgba(255, 107, 157, 0.15);
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: linear-gradient(135deg, #fff5f8 0%, #f3ecff 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 157, 0.35);
+  border-radius: 8px;
+}
