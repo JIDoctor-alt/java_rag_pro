@@ -2,11 +2,13 @@
 import { ref } from 'vue'
 import ChatView from './components/ChatView.vue'
 import ReportView from './components/ReportView.vue'
+import KnowledgeView from './components/KnowledgeView.vue'
 
 const activeTab = ref('chat')
 
 const tabs = [
   { key: 'chat', label: '恋爱对话', icon: '💬' },
+  { key: 'knowledge', label: '知识问答', icon: '📚' },
   { key: 'report', label: '恋爱报告', icon: '📊' }
 ]
 </script>
@@ -37,6 +39,7 @@ const tabs = [
 
     <main class="app-main">
       <ChatView v-show="activeTab === 'chat'" />
+      <KnowledgeView v-show="activeTab === 'knowledge'" />
       <ReportView v-show="activeTab === 'report'" />
     </main>
   </div>

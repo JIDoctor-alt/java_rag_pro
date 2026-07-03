@@ -1,7 +1,14 @@
 package com.ragpro.lovemaster.service;
 
+import com.ragpro.lovemaster.config.LoveMasterProperties;
+import com.ragpro.lovemaster.model.LoveCourseInfo;
+import com.ragpro.lovemaster.model.LoveKnowledgeAnswer;
+import com.ragpro.lovemaster.model.LoveKnowledgeRequest;
 import com.ragpro.lovemaster.model.LoveReport;
 import com.ragpro.lovemaster.model.LoveReportRequest;
+import com.ragpro.lovemaster.rag.LoveCourseRecommendService;
+import com.ragpro.lovemaster.rag.LoveKnowledgeService;
+import org.springframework.ai.document.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -17,6 +24,7 @@ import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -29,16 +37,28 @@ public class LoveMasterService {
     private final Resource chatPromptTemplate;
     private final Resource reportPromptTemplate;
     private final Resource multimodalPromptTemplate;
+    private final Resource ragQaPromptTemplate;
+    private final LoveKnowledgeService loveKnowledgeService;
+    private final LoveCourseRecommendService courseRecommendService;
+    private final LoveMasterProperties properties;
 
     public LoveMasterService(
             @Qualifier("loveMasterChatClient") ChatClient loveMasterChatClient,
             @Value("classpath:prompts/lovemaster/chat.st") Resource chatPromptTemplate,
             @Value("classpath:prompts/lovemaster/report.st") Resource reportPromptTemplate,
-            @Value("classpath:prompts/lovemaster/multimodal.st") Resource multimodalPromptTemplate) {
+            @Value("classpath:prompts/lovemaster/multimodal.st") Resource multimodalPromptTemplate,
+            @Value("classpath:prompts/lovemaster/rag-qa.st") Resource ragQaPromptTemplate,
+            LoveKnowledgeService loveKnowledgeService,
+            LoveCourseRecommendService courseRecommendService,
+            LoveMasterProperties properties) {
         this.loveMasterChatClient = loveMasterChatClient;
         this.chatPromptTemplate = chatPromptTemplate;
         this.reportPromptTemplate = reportPromptTemplate;
         this.multimodalPromptTemplate = multimodalPromptTemplate;
+        this.ragQaPromptTemplate = ragQaPromptTemplate;
+        this.loveKnowledgeService = loveKnowledgeService;
+        this.courseRecommendService = courseRecommendService;
+        this.properties = properties;
     }
 
     public String chat(String message, String conversationId) {
@@ -82,6 +102,39 @@ public class LoveMasterService {
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, memoryId))
                 .call()
                 .entity(LoveReport.class);
+    }
+
+    /**
+     * RAG 知识问答：Retrieve → Augment → Generate
+     */
+    public LoveKnowledgeAnswer askKnowledge(LoveKnowledgeRequest request) {
+        String memoryId = toMemoryId(request.getConversationId());
+        List<Document> sources = loveKnowledgeService.retrieve(request.getQuestion());
+        String prompt = renderTemplate(ragQaPromptTemplate, Map.of("question", request.getQuestion()));
+
+        String answer = loveMasterChatClient.prompt()
+                .user(prompt)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, memoryId))
+                .call()
+                .content();
+
+        List<LoveKnowledgeAnswer.RetrievedChunk> chunks = sources.stream()
+                .map(doc -> LoveKnowledgeAnswer.RetrievedChunk.builder()
+                        .content(doc.getText())
+                        .title(String.valueOf(doc.getMetadata().getOrDefault("title", "知识片段")))
+                        .score(doc.getScore() != null ? doc.getScore() : 0.0)
+                        .build())
+                .toList();
+
+        List<LoveCourseInfo> courses = courseRecommendService.recommendFromSources(sources, request.getQuestion());
+
+        return LoveKnowledgeAnswer.builder()
+                .question(request.getQuestion())
+                .answer(answer)
+                .sources(chunks)
+                .recommendedCourses(courses)
+                .ragSource(properties.getRag().getSource())
+                .build();
     }
 
     private String chatWithImage(String message, String imageUrl, String memoryId) {

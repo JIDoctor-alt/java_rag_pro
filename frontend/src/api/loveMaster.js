@@ -85,3 +85,23 @@ export function generateReport(payload) {
     body: JSON.stringify(payload)
   }).then(handleJson)
 }
+
+/** RAG 知识问答 */
+export function askKnowledge({ question, conversationId }) {
+  return fetch(`${BASE}/knowledge/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, conversationId })
+  }).then(handleJson)
+}
+
+/** 检索知识片段（仅 Retrieve） */
+export function searchKnowledge(query) {
+  return fetch(`${BASE}/knowledge/search?query=${encodeURIComponent(query)}`)
+    .then(handleJson)
+}
+
+/** 知识库状态 */
+export function knowledgeStats() {
+  return fetch(`${BASE}/knowledge/stats`).then(handleJson)
+}

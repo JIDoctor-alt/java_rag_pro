@@ -38,6 +38,7 @@
 | 结构化输出 - 恋爱报告 | `POST /api/love-master/report` → `LoveReport` |
 | Prompt 模板 | `resources/prompts/lovemaster/*.st` |
 | 多模态 | 对话请求支持 `imageUrl` 字段 |
+| **RAG 知识问答** | `QuestionAnswerAdvisor` + PGvector 本地向量库 |
 
 ### Vue3 前端界面
 
@@ -63,6 +64,22 @@ curl -X POST http://localhost:8080/api/love-master/report \
   -H "Content-Type: application/json" \
   -d "{\"name\":\"小明\",\"gender\":\"男\",\"situation\":\"和女友异地一年，最近联系变少\",\"partnerInfo\":\"性格内向，工作较忙\"}"
 ```
+
+### RAG 知识问答（方式一：本地 PGvector）
+
+```
+离线 ETL：Read → Split → Write（启动时自动导入 knowledge/love/）
+运行时 RAG：Retrieve → Augment → Generate
+```
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/love-master/knowledge/ask` | RAG 知识问答（返回答案 + 检索片段） |
+| `GET /api/love-master/knowledge/search?query=` | 仅检索（演示 Retrieve 步骤） |
+| `POST /api/love-master/knowledge/text` | 导入恋爱知识文本 |
+| `GET /api/love-master/knowledge/stats` | 知识库状态 |
+
+前端「知识问答」Tab 可可视化检索片段与回答。
 
 ## 大模型接入
 
