@@ -10,4 +10,10 @@ public class LoveKnowledgeRequest {
     private String question;
 
     private String conversationId = "default";
+
+    /** 限定检索文档 ID（章节过滤） */
+    private String docId;
+
+    /** 限定检索文档类型：article / course / case */
+    private String docType;
 }

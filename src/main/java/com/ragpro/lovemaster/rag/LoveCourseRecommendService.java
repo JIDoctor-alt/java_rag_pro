@@ -2,6 +2,7 @@ package com.ragpro.lovemaster.rag;
 
 import com.ragpro.lovemaster.config.LoveMasterProperties;
 import com.ragpro.lovemaster.model.LoveCourseInfo;
+import com.ragpro.lovemaster.payment.CourseProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -34,6 +35,7 @@ public class LoveCourseRecommendService {
 
     private final VectorStore vectorStore;
     private final LoveMasterProperties properties;
+    private final CourseProductService courseProductService;
 
     public List<LoveCourseInfo> recommend(String question) {
         var rag = properties.getRag();
@@ -73,11 +75,12 @@ public class LoveCourseRecommendService {
                 continue;
             }
             String name = header.group(1).trim();
-            String id = String.valueOf(doc.getMetadata().getOrDefault("courseId", name));
+            String id = String.valueOf(doc.getMetadata().getOrDefault("docId",
+                    doc.getMetadata().getOrDefault("courseId", name)));
             if (unique.containsKey(id)) {
                 continue;
             }
-            unique.put(id, LoveCourseInfo.builder()
+            unique.put(id, courseProductService.enrich(LoveCourseInfo.builder()
                     .id(id)
                     .name(name)
                     .description(extractDescription(text))
@@ -85,7 +88,7 @@ public class LoveCourseRecommendService {
                     .url(extractGroup(text, URL))
                     .tags(extractGroup(text, TAGS))
                     .reason(buildReason(name, question))
-                    .build());
+                    .build()));
         }
         return new ArrayList<>(unique.values());
     }

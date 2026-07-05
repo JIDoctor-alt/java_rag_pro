@@ -19,10 +19,10 @@ spring:
 
     # ── 百炼 / 通义 DashScope ──
     dashscope:
-      api-key: ${DASHSCOPE_API_KEY:}
+      api-key: ${DASHSCOPE_API_KEY:sk-cc7906d016cc45ffa88b265470711cbe}
       chat:
         options:
-          model: qwen-plus
+          model: qwen3.7-max
           temperature: 0.7
       embedding:
         options:
@@ -139,3 +139,41 @@ love-master:
     similarity-threshold: 0.6
     category: love-master
     bootstrap-on-startup: true
+  payment:
+    enabled: ${STRIPE_ENABLED:false}
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/?payment=success&session_id={CHECKOUT_SESSION_ID}}
+      cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/?payment=cancel}
+      currency: cny
+    courses:
+      confession-bootcamp:
+        amount-cents: 9900
+        payment-link-url: ${STRIPE_PAYMENT_LINK:https://buy.stripe.com/test_8x27sLebYdZCdz65dD1oI00}
+      long-distance:
+        amount-cents: 14900
+      eq-communication:
+        amount-cents: 19900
+      consultation-service:
+        amount-cents: 29900
+    domestic:
+      enabled: ${DOMESTIC_PAY_ENABLED:true}
+      notify-base-url: ${PAY_NOTIFY_BASE_URL:http://localhost:8080}
+      wechat:
+        enabled: true
+        mp-app-id: ${WECHAT_MP_APP_ID:}
+        mp-app-secret: ${WECHAT_MP_APP_SECRET:}
+        app-app-id: ${WECHAT_APP_APP_ID:}
+        mch-id: ${WECHAT_MCH_ID:}
+        api-v3-key: ${WECHAT_API_V3_KEY:}
+        merchant-serial-number: ${WECHAT_MCH_SERIAL:}
+        private-key-path: ${WECHAT_PRIVATE_KEY_PATH:}
+        oauth-frontend-redirect: ${WECHAT_OAUTH_REDIRECT:http://localhost:5173/}
+      alipay:
+        enabled: true
+        app-id: ${ALIPAY_APP_ID:}
+        private-key: ${ALIPAY_PRIVATE_KEY:}
+        alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
+        sandbox: ${ALIPAY_SANDBOX:true}
+        return-url: ${ALIPAY_RETURN_URL:http://localhost:5173/?payment=success}

@@ -22,6 +22,9 @@
         <spring-ai.version>1.0.3</spring-ai.version>
         <spring-ai-alibaba.version>1.0.0.2</spring-ai-alibaba.version>
         <knife4j.version>4.5.0</knife4j.version>
+        <stripe.version>28.2.0</stripe.version>
+        <wechatpay.version>0.2.16</wechatpay.version>
+        <alipay.version>4.39.218.ALL</alipay.version>
     </properties>
 
     <dependencyManagement>
@@ -140,6 +143,27 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Stripe Payment -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>${stripe.version}</version>
+        </dependency>
+
+        <!-- 微信支付 V3 -->
+        <dependency>
+            <groupId>com.github.wechatpay-apiv3</groupId>
+            <artifactId>wechatpay-java</artifactId>
+            <version>${wechatpay.version}</version>
+        </dependency>
+
+        <!-- 支付宝 -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>${alipay.version}</version>
         </dependency>
 
         <!-- Dev -->

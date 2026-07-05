@@ -5,6 +5,7 @@ import { chatStream } from '../api/loveMaster.js'
 const conversationId = ref('user-' + Math.random().toString(36).slice(2, 8))
 const input = ref('')
 const sending = ref(false)
+const streamingIndex = ref(-1)
 const messages = ref([
   {
     role: 'assistant',
@@ -26,6 +27,10 @@ async function scrollToBottom() {
   if (el) el.scrollTop = el.scrollHeight
 }
 
+function isStreamingMsg(idx) {
+  return sending.value && streamingIndex.value === idx
+}
+
 async function send(text) {
   const content = (text ?? input.value).trim()
   if (!content || sending.value) return
@@ -34,25 +39,27 @@ async function send(text) {
   input.value = ''
   sending.value = true
 
-  const reply = { role: 'assistant', content: '' }
-  messages.value.push(reply)
+  const replyIndex = messages.value.length
+  messages.value.push({ role: 'assistant', content: '' })
+  streamingIndex.value = replyIndex
   await scrollToBottom()
 
   try {
     await chatStream(
       { message: content, conversationId: conversationId.value },
       (chunk) => {
-        reply.content += chunk
+        messages.value[replyIndex].content += chunk
         scrollToBottom()
       }
     )
-    if (!reply.content) {
-      reply.content = '（小爱暂时没有回应，请稍后再试）'
+    if (!messages.value[replyIndex].content) {
+      messages.value[replyIndex].content = '（小爱暂时没有回应，请稍后再试）'
     }
   } catch (e) {
-    reply.content = `😢 出错了：${e.message}`
+    messages.value[replyIndex].content = `😢 出错了：${e.message}`
   } finally {
     sending.value = false
+    streamingIndex.value = -1
     scrollToBottom()
   }
 }
@@ -74,10 +81,19 @@ function handleKeydown(e) {
         class="msg"
         :class="msg.role"
       >
-        <div class="avatar">{{ msg.role === 'user' ? '🧑' : '💕' }}</div>
+        <div class="avatar" :class="{ 'avatar-loading': isStreamingMsg(idx) && !msg.content }">
+          <span v-if="isStreamingMsg(idx) && !msg.content" class="spinner"></span>
+          <span v-else>{{ msg.role === 'user' ? '🧑' : '💕' }}</span>
+        </div>
         <div class="bubble">
-          <span v-if="msg.content">{{ msg.content }}</span>
-          <span v-else class="typing"><i></i><i></i><i></i></span>
+          <template v-if="msg.content">
+            <span>{{ msg.content }}</span>
+            <span v-if="isStreamingMsg(idx)" class="cursor">|</span>
+          </template>
+          <div v-else-if="isStreamingMsg(idx)" class="loading-box">
+            <span class="spinner spinner-sm"></span>
+            <span class="loading-text">小爱正在思考…</span>
+          </div>
         </div>
       </div>
     </div>
@@ -102,7 +118,8 @@ function handleKeydown(e) {
         @keydown="handleKeydown"
       ></textarea>
       <button class="send-btn" :disabled="sending || !input.trim()" @click="send()">
-        {{ sending ? '思考中' : '发送' }}
+        <span v-if="sending" class="spinner spinner-btn"></span>
+        {{ sending ? '输出中' : '发送' }}
       </button>
     </div>
   </section>
@@ -153,6 +170,11 @@ function handleKeydown(e) {
   font-size: 20px;
 }
 
+.avatar-loading {
+  background: #fff;
+  border: 2px solid var(--pink-soft);
+}
+
 .bubble {
   padding: 11px 15px;
   border-radius: 16px;
@@ -174,31 +196,57 @@ function handleKeydown(e) {
   color: #fff;
 }
 
-.typing {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-}
-
-.typing i {
-  width: 7px;
-  height: 7px;
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--pink-soft);
+  border-top-color: var(--pink);
   border-radius: 50%;
-  background: var(--pink);
-  animation: blink 1.2s infinite ease-in-out;
+  animation: spin 0.75s linear infinite;
 }
 
-.typing i:nth-child(2) {
-  animation-delay: 0.2s;
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
 }
 
-.typing i:nth-child(3) {
-  animation-delay: 0.4s;
+.spinner-btn {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
 }
 
-@keyframes blink {
-  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
-  40% { opacity: 1; transform: translateY(-4px); }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-text {
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--pink);
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .suggestions {
@@ -247,6 +295,9 @@ function handleKeydown(e) {
 }
 
 .send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 11px 22px;
   border-radius: 14px;
   background: linear-gradient(90deg, var(--pink), var(--purple));

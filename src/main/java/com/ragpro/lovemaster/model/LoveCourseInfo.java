@@ -14,4 +14,9 @@ public class LoveCourseInfo {
     private String url;
     private String reason;
     private String tags;
+    private Boolean purchasable;
+    private String stripePriceId;
+    private String paymentLinkUrl;
+    private Long amountCents;
+    private String currency;
 }

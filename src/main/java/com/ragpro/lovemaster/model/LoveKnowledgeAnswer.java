@@ -20,6 +20,7 @@ public class LoveKnowledgeAnswer {
     public static class RetrievedChunk {
         private String content;
         private String title;
+        private String chapterPath;
         private double score;
     }
 }

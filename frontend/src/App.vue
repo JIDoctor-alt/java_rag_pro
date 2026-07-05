@@ -1,20 +1,50 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import ChatView from './components/ChatView.vue'
 import ReportView from './components/ReportView.vue'
-import KnowledgeView from './components/KnowledgeView.vue'
+import KnowledgeChapterView from './components/KnowledgeChapterView.vue'
+import { fetchPaymentOrder } from './api/loveMaster.js'
 
 const activeTab = ref('chat')
+const paymentNotice = ref(null)
 
 const tabs = [
   { key: 'chat', label: '恋爱对话', icon: '💬' },
-  { key: 'knowledge', label: '知识问答', icon: '📚' },
+  { key: 'knowledge', label: '知识库', icon: '📚' },
   { key: 'report', label: '恋爱报告', icon: '📊' }
 ]
+
+onMounted(async () => {
+  const params = new URLSearchParams(window.location.search)
+  const payment = params.get('payment')
+  const sessionId = params.get('session_id')
+  if (payment === 'success' && sessionId) {
+    try {
+      const order = await fetchPaymentOrder(sessionId)
+      paymentNotice.value = {
+        type: 'success',
+        text: `支付成功！已购买《${order.courseName}》`
+      }
+    } catch {
+      paymentNotice.value = { type: 'success', text: '支付成功，感谢你的购买！' }
+    }
+    activeTab.value = 'knowledge'
+  } else if (payment === 'cancel') {
+    paymentNotice.value = { type: 'cancel', text: '已取消支付，可随时回来继续选购' }
+    activeTab.value = 'knowledge'
+  }
+  if (payment) {
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+})
+
+function dismissNotice() {
+  paymentNotice.value = null
+}
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ wide: activeTab === 'knowledge' }">
     <header class="app-header">
       <div class="brand">
         <span class="brand-avatar">💕</span>
@@ -37,9 +67,14 @@ const tabs = [
       </nav>
     </header>
 
+    <div v-if="paymentNotice" class="payment-notice" :class="paymentNotice.type">
+      <span>{{ paymentNotice.text }}</span>
+      <button @click="dismissNotice">知道了</button>
+    </div>
+
     <main class="app-main">
       <ChatView v-show="activeTab === 'chat'" />
-      <KnowledgeView v-show="activeTab === 'knowledge'" />
+      <KnowledgeChapterView v-show="activeTab === 'knowledge'" />
       <ReportView v-show="activeTab === 'report'" />
     </main>
   </div>
@@ -53,6 +88,10 @@ const tabs = [
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
+}
+
+.app.wide {
+  max-width: 1100px;
 }
 
 .app-header {
@@ -126,5 +165,35 @@ const tabs = [
 .app-main {
   flex: 1;
   min-height: 0;
+}
+
+.payment-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.payment-notice.success {
+  background: #eefbf3;
+  color: #1f7a45;
+  border: 1px solid #bfe8cf;
+}
+
+.payment-notice.cancel {
+  background: #fff8ee;
+  color: #9a6b1f;
+  border: 1px solid #f3ddb0;
+}
+
+.payment-notice button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
 }
 </style>

@@ -109,7 +109,8 @@ public class LoveMasterService {
      */
     public LoveKnowledgeAnswer askKnowledge(LoveKnowledgeRequest request) {
         String memoryId = toMemoryId(request.getConversationId());
-        List<Document> sources = loveKnowledgeService.retrieve(request.getQuestion());
+        List<Document> sources = loveKnowledgeService.retrieve(
+                request.getQuestion(), request.getDocId(), request.getDocType());
         String prompt = renderTemplate(ragQaPromptTemplate, Map.of("question", request.getQuestion()));
 
         String answer = loveMasterChatClient.prompt()
@@ -122,6 +123,9 @@ public class LoveMasterService {
                 .map(doc -> LoveKnowledgeAnswer.RetrievedChunk.builder()
                         .content(doc.getText())
                         .title(String.valueOf(doc.getMetadata().getOrDefault("title", "知识片段")))
+                        .chapterPath(String.valueOf(doc.getMetadata().getOrDefault(
+                                "chapterPath",
+                                doc.getMetadata().getOrDefault("title", "知识片段"))))
                         .score(doc.getScore() != null ? doc.getScore() : 0.0)
                         .build())
                 .toList();

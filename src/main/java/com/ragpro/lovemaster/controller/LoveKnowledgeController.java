@@ -2,9 +2,14 @@ package com.ragpro.lovemaster.controller;
 
 import com.ragpro.lovemaster.advisor.LoveSensitiveAdvisor;
 import com.ragpro.lovemaster.model.LoveKnowledgeAnswer;
+import com.ragpro.lovemaster.model.LoveKnowledgeChapterDetail;
+import com.ragpro.lovemaster.model.LoveKnowledgeChapterNode;
 import com.ragpro.lovemaster.model.LoveKnowledgeRequest;
 import com.ragpro.lovemaster.model.LoveCourseInfo;
+import com.ragpro.lovemaster.model.LoveKnowledgeChapterUpdateRequest;
 import com.ragpro.lovemaster.rag.LoveCourseRecommendService;
+import com.ragpro.lovemaster.rag.LoveKnowledgeCatalogService;
+import com.ragpro.lovemaster.rag.LoveKnowledgeChapterEditService;
 import com.ragpro.lovemaster.rag.LoveKnowledgeService;
 import com.ragpro.lovemaster.service.LoveMasterService;
 import com.ragpro.superagent.model.ApiResult;
@@ -28,8 +33,61 @@ import java.util.Map;
 public class LoveKnowledgeController {
 
     private final LoveKnowledgeService loveKnowledgeService;
+    private final LoveKnowledgeCatalogService catalogService;
     private final LoveMasterService loveMasterService;
     private final LoveCourseRecommendService courseRecommendService;
+    private final LoveKnowledgeChapterEditService chapterEditService;
+
+    @Operation(summary = "知识库章节树")
+    @GetMapping("/tree")
+    public ApiResult<List<LoveKnowledgeChapterNode>> tree() {
+        return ApiResult.ok(catalogService.getTree());
+    }
+
+    @Operation(summary = "章节详情", description = "docId 必填，sectionIndex 可选（小节序号）")
+    @GetMapping("/chapter")
+    public ApiResult<LoveKnowledgeChapterDetail> chapter(
+            @RequestParam String docId,
+            @RequestParam(required = false) Integer sectionIndex) {
+        LoveKnowledgeChapterDetail detail = catalogService.getChapter(docId, sectionIndex);
+        if (detail == null) {
+            return ApiResult.fail("章节不存在");
+        }
+        return ApiResult.ok(detail);
+    }
+
+    @Operation(summary = "保存章节内容", description = "编辑 Markdown 并持久化到 data/knowledge/love，同时更新 RAG 索引")
+    @PutMapping("/chapter")
+    public ApiResult<LoveKnowledgeChapterDetail> updateChapter(
+            @Valid @RequestBody LoveKnowledgeChapterUpdateRequest request) {
+        try {
+            return ApiResult.ok(chapterEditService.saveChapter(
+                    request.getDocId(), request.getSectionIndex(), request.getContent()));
+        } catch (IllegalArgumentException e) {
+            return ApiResult.fail(e.getMessage());
+        } catch (IOException e) {
+            return ApiResult.fail("保存失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "删除章节或文档", description = "删除小节或整篇文档，写入回收标记并同步 RAG 索引")
+    @DeleteMapping("/chapter")
+    public ApiResult<Map<String, Object>> deleteChapter(
+            @RequestParam String docId,
+            @RequestParam(required = false) Integer sectionIndex) {
+        try {
+            chapterEditService.deleteChapter(docId, sectionIndex);
+            return ApiResult.ok(Map.of(
+                    "docId", docId,
+                    "sectionIndex", sectionIndex != null ? sectionIndex : -1,
+                    "deleted", true
+            ));
+        } catch (IllegalArgumentException e) {
+            return ApiResult.fail(e.getMessage());
+        } catch (IOException e) {
+            return ApiResult.fail("删除失败：" + e.getMessage());
+        }
+    }
 
     @Operation(summary = "RAG 知识问答", description = "Retrieve → Augment → Generate")
     @PostMapping("/ask")
@@ -41,14 +99,20 @@ public class LoveKnowledgeController {
         }
     }
 
-    @Operation(summary = "检索知识片段", description = "仅执行 Retrieve 步骤，用于演示 RAG 检索")
+    @Operation(summary = "检索知识片段", description = "仅执行 Retrieve 步骤，支持章节过滤")
     @GetMapping("/search")
-    public ApiResult<List<Map<String, Object>>> search(@RequestParam String query) {
-        List<Document> docs = loveKnowledgeService.retrieve(query);
+    public ApiResult<List<Map<String, Object>>> search(
+            @RequestParam String query,
+            @RequestParam(required = false) String docId,
+            @RequestParam(required = false) String docType) {
+        List<Document> docs = loveKnowledgeService.retrieve(query, docId, docType);
         List<Map<String, Object>> results = docs.stream()
                 .map(doc -> Map.<String, Object>of(
                         "content", doc.getText(),
                         "title", doc.getMetadata().getOrDefault("title", "unknown"),
+                        "chapterPath", doc.getMetadata().getOrDefault("chapterPath", doc.getMetadata().getOrDefault("title", "")),
+                        "docId", doc.getMetadata().getOrDefault("docId", ""),
+                        "docType", doc.getMetadata().getOrDefault("docType", ""),
                         "score", doc.getScore() != null ? doc.getScore() : 0.0
                 ))
                 .toList();
